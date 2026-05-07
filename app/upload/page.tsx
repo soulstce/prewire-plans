@@ -23,14 +23,21 @@ export default function Page() {
             onChange={async (event) => {
               const file = event.target.files?.[0];
               if (!file) return;
-              const dataUrl = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(String(reader.result));
-                reader.onerror = () => reject(reader.error);
-                reader.readAsDataURL(file);
-              });
-              importPdf({ name: file.name, dataUrl }, state.activeProjectId);
-              setStatus(`${file.name} added to ${state.projects.find((project) => project.id === state.activeProjectId)?.name ?? 'project'}.`);
+              try {
+                const dataUrl = await new Promise<string>((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(String(reader.result));
+                  reader.onerror = () => reject(reader.error);
+                  reader.readAsDataURL(file);
+                });
+                importPdf({ name: file.name, dataUrl }, state.activeProjectId);
+                setStatus(`${file.name} added to ${state.projects.find((project) => project.id === state.activeProjectId)?.name ?? 'project'}.`);
+              } catch (error) {
+                console.error('PDF upload failed', error);
+                setStatus(`Could not add ${file.name}. Try a smaller file or reload the workspace.`);
+              } finally {
+                event.currentTarget.value = '';
+              }
             }}
           />
           <span className="muted">Files stay in browser storage for this workspace.</span>
