@@ -5,6 +5,7 @@ import { createRoomChannel } from '@/lib/collab';
 import { loadState, saveState } from '@/lib/storage';
 import { seedState } from '@/lib/sample-data';
 import type { Annotation, AppState, DocumentRecord, ProjectRecord, ToolKind, ImportablePdf } from '@/lib/types';
+import { hasCloudSync, loadCloudState, saveCloudState, subscribeToCloudRoom } from '@/lib/cloud';
 
 type AppContextType = {
   state: AppState;
@@ -33,20 +34,61 @@ function makeId(prefix: string) {
 }
 
 export function AppProviders({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>(() => seedState());
+  const [state, setState] = useState<AppState>(() => loadState() ?? seedState());
+  const [hydrated, setHydrated] = useState(false);
+  const stateRef = useRef<AppState>(state);
   const previousRoom = useRef<string | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const shouldSkipBroadcast = useRef(false);
+  const shouldSkipCloudSave = useRef(false);
+  const remoteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyRef = useRef<Record<string, { past: Annotation[][]; future: Annotation[][] }>>({});
 
   useEffect(() => {
-    const loaded = loadState();
-    if (loaded) setState(loaded);
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const currentRoom = stateRef.current.settings.collaborationRoom;
+      if (hasCloudSync()) {
+        const remote = await loadCloudState(currentRoom);
+        if (cancelled) return;
+        if (remote && remote.lastSyncAt > stateRef.current.lastSyncAt) {
+          shouldSkipBroadcast.current = true;
+          shouldSkipCloudSave.current = true;
+          setState(remote);
+        }
+      }
+      if (!cancelled) setHydrated(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    saveState(state);
-  }, [state]);
+    if (!hydrated) return;
+    const currentRoom = state.settings.collaborationRoom;
+    if (!hasCloudSync()) return;
+
+    let cancelled = false;
+    const unsubscribe = subscribeToCloudRoom(currentRoom, (incoming) => {
+      if (cancelled) return;
+      if (incoming.lastSyncAt <= stateRef.current.lastSyncAt) return;
+      shouldSkipBroadcast.current = true;
+      shouldSkipCloudSave.current = true;
+      setState(incoming);
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [hydrated, state.settings.collaborationRoom]);
 
   useEffect(() => {
     if (previousRoom.current === state.settings.collaborationRoom) return;
@@ -56,25 +98,51 @@ export function AppProviders({ children }: { children: ReactNode }) {
     if (!channelRef.current) return;
     channelRef.current.onmessage = (event) => {
       const incoming = event.data as { state?: AppState; source?: string };
-      if (incoming?.state) {
-        shouldSkipBroadcast.current = true;
-        setState(incoming.state);
-      }
+      if (!incoming?.state) return;
+      if (incoming.state.lastSyncAt <= stateRef.current.lastSyncAt) return;
+      shouldSkipBroadcast.current = true;
+      shouldSkipCloudSave.current = true;
+      setState(incoming.state);
     };
     return () => {
       channelRef.current?.close();
       channelRef.current = null;
     };
-  }, [state.settings.collaborationRoom]);
+  }, [hydrated, state.settings.collaborationRoom]);
 
   useEffect(() => {
+    saveState(state);
+  }, [state]);
+
+  useEffect(() => {
+    if (!hydrated) return;
     if (shouldSkipBroadcast.current) {
       shouldSkipBroadcast.current = false;
       return;
     }
     if (!channelRef.current) return;
     channelRef.current.postMessage({ state, source: 'local' });
-  }, [state]);
+  }, [hydrated, state]);
+
+  useEffect(() => {
+    if (!hydrated || !hasCloudSync()) return;
+    if (shouldSkipCloudSave.current) {
+      shouldSkipCloudSave.current = false;
+      return;
+    }
+    if (remoteSaveTimer.current) clearTimeout(remoteSaveTimer.current);
+    const snapshot = state;
+    remoteSaveTimer.current = setTimeout(() => {
+      void saveCloudState(snapshot.settings.collaborationRoom, snapshot).then(() => {
+        if (stateRef.current.lastSyncAt === snapshot.lastSyncAt) {
+          // noop; persisted in cloud
+        }
+      });
+    }, 350);
+    return () => {
+      if (remoteSaveTimer.current) clearTimeout(remoteSaveTimer.current);
+    };
+  }, [hydrated, state]);
 
   const mutate = (updater: (current: AppState) => AppState) => {
     setState((current) => ({ ...updater(current), lastSyncAt: Date.now() }));
