@@ -148,7 +148,7 @@ export function PdfWorkspace() {
       if (target) deleteAnnotation(document.id, target.id);
       return;
     }
-    const drawingTool: CanvasTool = tool === 'eraser' ? 'pen' : tool;
+    const drawingTool: CanvasTool = tool;
     if (drawingTool === 'text') {
       const text = window.prompt('Text label', 'New note')?.trim();
       if (!text) return;
