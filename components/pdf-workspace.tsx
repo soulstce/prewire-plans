@@ -6,6 +6,8 @@ import { useApp } from './providers';
 import type { Annotation, Point, ToolKind } from '@/lib/types';
 import type { PointerEvent } from 'react';
 
+type CanvasTool = Exclude<ToolKind, 'eraser'>;
+
 const tools: { kind: ToolKind; label: string; icon: any }[] = [
   { kind: 'pen', label: 'Pen', icon: Pencil },
   { kind: 'line', label: 'Line', icon: LineChart },
@@ -121,7 +123,7 @@ export function PdfWorkspace() {
     };
   };
 
-  const buildAnnotation = (start: Point, end: Point, drawingTool: Exclude<ToolKind, 'eraser'>): Annotation => {
+  const buildAnnotation = (start: Point, end: Point, drawingTool: CanvasTool): Annotation => {
     const common = { id: uid(), color, size: state.settings.thickness, createdAt: Date.now(), user: state.settings.username };
     if (drawingTool === 'pen') return { ...common, tool: drawingTool, points: [start, end] };
     if (drawingTool === 'text') return { ...common, tool: drawingTool, point: start, text: selectedText || 'Add note', fontSize: 18 };
@@ -146,7 +148,7 @@ export function PdfWorkspace() {
       if (target) deleteAnnotation(document.id, target.id);
       return;
     }
-    const drawingTool = tool as Exclude<ToolKind, 'eraser'>;
+    const drawingTool: CanvasTool = tool === 'eraser' ? 'pen' : tool;
     if (drawingTool === 'text') {
       const text = window.prompt('Text label', 'New note')?.trim();
       if (!text) return;
