@@ -14,7 +14,13 @@ export function loadState(): AppState | null {
 
 export function saveState(state: AppState) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[storage] unable to persist state', error);
+    }
+  }
 }
 
 export function stateKey() {
