@@ -121,12 +121,12 @@ export function PdfWorkspace() {
     };
   };
 
-  const buildAnnotation = (start: Point, end: Point): Annotation => {
+  const buildAnnotation = (start: Point, end: Point, drawingTool: Exclude<ToolKind, 'eraser'>): Annotation => {
     const common = { id: uid(), color, size: state.settings.thickness, createdAt: Date.now(), user: state.settings.username };
-    if (tool === 'pen') return { ...common, tool, points: [start, end] };
-    if (tool === 'text') return { ...common, tool, point: start, text: selectedText || 'Add note', fontSize: 18 };
-    if (tool === 'arrow' || tool === 'line') return { ...common, tool, from: start, to: end };
-    return { ...common, tool, from: start, to: end };
+    if (drawingTool === 'pen') return { ...common, tool: drawingTool, points: [start, end] };
+    if (drawingTool === 'text') return { ...common, tool: drawingTool, point: start, text: selectedText || 'Add note', fontSize: 18 };
+    if (drawingTool === 'arrow' || drawingTool === 'line') return { ...common, tool: drawingTool, from: start, to: end };
+    return { ...common, tool: drawingTool, from: start, to: end };
   };
 
   const hitTest = (point: Point) => {
@@ -146,13 +146,14 @@ export function PdfWorkspace() {
       if (target) deleteAnnotation(document.id, target.id);
       return;
     }
-    if (tool === 'text') {
+    const drawingTool = tool as Exclude<ToolKind, 'eraser'>;
+    if (drawingTool === 'text') {
       const text = window.prompt('Text label', 'New note')?.trim();
       if (!text) return;
-      addAnnotation(document.id, { ...buildAnnotation(start, start), text } as Annotation);
+      addAnnotation(document.id, { ...buildAnnotation(start, start, drawingTool), text } as Annotation);
       return;
     }
-    const anno = buildAnnotation(start, start);
+    const anno = buildAnnotation(start, start, drawingTool);
     setDraft(anno);
   };
 
