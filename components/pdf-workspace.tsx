@@ -59,12 +59,13 @@ export function PdfWorkspace() {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [pageSize, setPageSize] = useState({ width: 820, height: 1120 });
   const [draft, setDraft] = useState<Annotation | null>(null);
-  const [selectedText, setSelectedText] = useState('');
+  const [pendingText, setPendingText] = useState<{ point: Point; value: string } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const pdfRef = useRef<any>(null);
   const pageRef = useRef<any>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const textInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setTool(state.settings.defaultTool);
@@ -126,9 +127,27 @@ export function PdfWorkspace() {
   const buildAnnotation = (start: Point, end: Point, drawingTool: CanvasTool): Annotation => {
     const common = { id: uid(), color, size: state.settings.thickness, createdAt: Date.now(), user: state.settings.username };
     if (drawingTool === 'pen') return { ...common, tool: drawingTool, points: [start, end] };
-    if (drawingTool === 'text') return { ...common, tool: drawingTool, point: start, text: selectedText || 'Add note', fontSize: 18 };
+    if (drawingTool === 'text') return { ...common, tool: drawingTool, point: start, text: 'Note', fontSize: 18 };
     if (drawingTool === 'arrow' || drawingTool === 'line') return { ...common, tool: drawingTool, from: start, to: end };
     return { ...common, tool: drawingTool, from: start, to: end };
+  };
+
+  const commitPendingText = (value: string) => {
+    const text = value.trim();
+    if (text && document?.id && pendingText) {
+      addAnnotation(document.id, {
+        id: uid(),
+        tool: 'text',
+        color,
+        size: state.settings.thickness,
+        createdAt: Date.now(),
+        user: state.settings.username,
+        point: pendingText.point,
+        text,
+        fontSize: 18,
+      });
+    }
+    setPendingText(null);
   };
 
   const hitTest = (point: Point) => {
@@ -150,9 +169,7 @@ export function PdfWorkspace() {
     }
     const drawingTool: CanvasTool = tool;
     if (drawingTool === 'text') {
-      const text = window.prompt('Text label', 'New note')?.trim();
-      if (!text) return;
-      addAnnotation(document.id, { ...buildAnnotation(start, start, drawingTool), text } as Annotation);
+      setPendingText({ point: start, value: '' });
       return;
     }
     const anno = buildAnnotation(start, start, drawingTool);
@@ -241,6 +258,7 @@ export function PdfWorkspace() {
             <div className="page-stack" style={{ width: pageSize.width, height: pageSize.height }}>
               <canvas ref={canvasRef} className="pdf-canvas" />
               <svg className="markup-layer" viewBox={`0 0 ${pageSize.width} ${pageSize.height}`} preserveAspectRatio="none">
+
                 <defs>
                   <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3.5" orient="auto">
                     <path d="M0,0 L7,3.5 L0,7 z" fill={color} />
@@ -264,6 +282,29 @@ export function PdfWorkspace() {
                   return <line key={key} x1={x1} y1={y1} x2={x2} y2={y2} stroke={annotation.color} strokeWidth={annotation.size} strokeLinecap="round" markerEnd={annotation.tool === 'arrow' ? 'url(#arrowhead)' : undefined} />;
                 })}
               </svg>
+              {pendingText && (
+                <input
+                  ref={textInputRef}
+                  autoFocus
+                  className="text-anno-input"
+                  value={pendingText.value}
+                  placeholder="Type note, Enter to place…"
+                  onChange={(e) => setPendingText({ ...pendingText, value: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); commitPendingText(pendingText.value); }
+                    if (e.key === 'Escape') setPendingText(null);
+                  }}
+                  onBlur={() => commitPendingText(pendingText.value)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  style={{
+                    position: 'absolute',
+                    left: pendingText.point.x * pageSize.width,
+                    top: pendingText.point.y * pageSize.height - 12,
+                    color,
+                    fontSize: 18,
+                  }}
+                />
+              )}
             </div>
           ) : (
             <div className="empty-state">

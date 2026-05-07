@@ -85,6 +85,7 @@ input::placeholder { color: #778; }
 .mobile-nav { position: fixed; left: 24px; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 30; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding: 10px; margin: 0 auto; max-width: 980px; }
 .upload-zone { min-height: 320px; display: grid; place-items: center; text-align: center; border: 1px dashed rgba(168,85,247,0.4); border-radius: 26px; background: rgba(255,255,255,0.02); padding: 24px; }
 .file-input { display: grid; gap: 10px; justify-items: center; }
+.text-anno-input { position: absolute; z-index: 10; min-width: 160px; max-width: 320px; background: rgba(6,7,10,0.82); border: 1px solid rgba(168,85,247,0.5); border-radius: 10px; padding: 6px 10px; font-weight: 600; outline: none; backdrop-filter: blur(12px); box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
 
 @media (max-width: 1080px) {
   .app-shell { padding: 16px; padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 16px); }
