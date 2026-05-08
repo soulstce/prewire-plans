@@ -77,7 +77,14 @@ export function PdfWorkspace() {
     (async () => {
       const pdfjs = await import('pdfjs-dist');
       pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-      const bytes = document.source?.startsWith('data:') ? Uint8Array.from(atob(document.source.split(',')[1]), (c) => c.charCodeAt(0)) : await (await fetch(document.source!)).arrayBuffer();
+      const source = document.source!;
+      const bytes = source.startsWith('data:')
+        ? Uint8Array.from(atob(source.split(',')[1]), (c) => c.charCodeAt(0))
+        : await (async () => {
+            const response = await fetch(source, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`Failed to fetch PDF: ${response.status}`);
+            return response.arrayBuffer();
+          })();
       const loadingTask = pdfjs.getDocument({ data: bytes });
       const pdf = await loadingTask.promise;
       if (disposed) return;
