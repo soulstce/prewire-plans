@@ -235,7 +235,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       mutate((current) => {
         const selectedProjectId = projectId ?? current.activeProjectId;
         const documentId = makeId('doc');
-        const document: DocumentRecord = { id: documentId, projectId: selectedProjectId, title: payload.name, source: payload.dataUrl, pageCount: 0, updatedAt: Date.now() };
+        const document: DocumentRecord = { id: documentId, projectId: selectedProjectId, title: payload.name, source: payload.sourceUrl, pageCount: 0, updatedAt: Date.now() };
         return {
           ...current,
           documents: [document, ...current.documents],
