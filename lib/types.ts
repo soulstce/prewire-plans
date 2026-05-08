@@ -78,5 +78,7 @@ export type AppState = {
 
 export type ImportablePdf = {
   name: string;
-  dataUrl: string;
+  sourceUrl: string;
+  publicId?: string | null;
+  provider: 'cloudinary';
 };
