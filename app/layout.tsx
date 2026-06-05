@@ -1,36 +1,25 @@
-import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
-import './globals.css';
-import { AppProviders } from '@/components/providers';
-import { Shell } from '@/components/shell';
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'Prewire Plans',
-  description: 'Collaborative PDF review and markup workspace for modern prewire planning.',
-  appleWebApp: {
-    capable: true,
-    title: 'Prewire Plans',
-    statusBarStyle: 'black-translucent'
-  }
+  title: "Call Claude",
+  description: "Talk to Claude like a phone call."
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0a0a0f"
+};
+
+export default function RootLayout({
+  children
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Prewire Plans" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
-      </head>
-      <body>
-        <AppProviders>
-          <Shell>{children}</Shell>
-        </AppProviders>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
